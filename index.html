@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jatin Assistant</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="chat-container">
+        <!-- Header -->
+        <div id="chat-header">Jatin Assistant</div>
+
+        <!-- Chat box -->
+        <div id="chat-box"></div>
+
+        <!-- Input area -->
+        <div id="input-area">
+            <input type="text" id="user-input" placeholder="Type your message...">
+            <button onclick="sendMessage()">Send</button>
+            <button onclick="startVoice()">🎤</button>
+        </div>
+    </div>
+
+    <script>
+        function addMessage(message, sender) {
+            const chatBox = document.getElementById("chat-box");
+            const msgDiv = document.createElement("div");
+            msgDiv.classList.add(sender === "user" ? "user-msg" : "bot-msg");
+            msgDiv.textContent = message;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById("user-input");
+            const message = input.value.trim();
+            if (!message) return;
+
+            addMessage(message, "user");
+            input.value = "";
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message })
+                });
+                const data = await response.json();
+                addMessage(data.reply, "bot");
+
+                const speech = new SpeechSynthesisUtterance(data.reply);
+                speech.lang = "en-IN";
+                window.speechSynthesis.speak(speech);
+
+            } catch (error) {
+                addMessage("⚠️ Error connecting to server.", "bot");
+            }
+        }
+
+        function startVoice() {
+            if (!("webkitSpeechRecognition" in window)) {
+                alert("❌ Speech Recognition not supported in this browser.");
+                return;
+            }
+
+            const recognition = new webkitSpeechRecognition();
+            recognition.lang = "en-IN";
+            recognition.onresult = function(event) {
+                const voiceText = event.results[0][0].transcript;
+                document.getElementById("user-input").value = voiceText;
+                sendMessage();
+            };
+            recognition.start();
+        }
+    </script>
+</body>
+</html>
